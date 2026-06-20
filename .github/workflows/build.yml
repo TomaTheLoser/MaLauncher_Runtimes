@@ -70,6 +70,7 @@ jobs:
           #include "precompiled.hpp"
           #include "runtime/os.hpp"
           #include "runtime/os_perf.hpp"
+          #include "utilities/globalDefinitions.hpp"
 
           jdouble os::elapsedVTime() {
             return (jdouble)-1;
@@ -79,8 +80,8 @@ jobs:
             return (jlong)-1;
           }
 
-          os::physical_memory_size_type os::physical_memory() {
-            return (os::physical_memory_size_type)-1;
+          physical_memory_size_type os::physical_memory() {
+            return (physical_memory_size_type)-1;
           }
 
           bool os::get_host_name(char* buf, size_t buflen) {
@@ -92,11 +93,9 @@ jobs:
       - name: Exclude broken X11 Java files
         working-directory: jdk21u
         run: |
-          JAVA_GMK="make/modules/java.desktop/Java.gmk"
-          # Exclude X11FontManager.java and NativeGlyphMapper.java from build
-          sed -i '' '/EXCLUDE_FILES += \\/a\
-              $(TOPDIR)/src/java.desktop/unix/classes/sun/awt/X11FontManager.java \\\
-              $(TOPDIR)/src/java.desktop/unix/classes/sun/font/NativeGlyphMapper.java \\' "$JAVA_GMK"
+          # Directly remove the problematic files so they can't be compiled
+          rm -f src/java.desktop/unix/classes/sun/awt/X11FontManager.java
+          rm -f src/java.desktop/unix/classes/sun/font/NativeGlyphMapper.java
 
       - name: Verify no remaining rejects
         working-directory: jdk21u
