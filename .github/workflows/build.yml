@@ -63,28 +63,6 @@ jobs:
           FILE="make/modules/jdk.hotspot.agent/Gensrc.gmk"
           sed -i '' 's/^/#DISABLED_/' "$FILE"
 
-      - name: Fix os_perf_bsd.cpp for iOS (remove missing includes)
-        working-directory: jdk21u
-        run: |
-          FILE="src/hotspot/os/bsd/os_perf_bsd.cpp"
-          # Remove include of libproc.h (not on iOS)
-          sed -i '' 's|#import <libproc.h>|// iOS: no libproc.h|' "$FILE"
-          # Remove include of net/route.h (not on iOS)
-          sed -i '' 's|#include <net/route.h>|// iOS: no route.h|' "$FILE"
-          # Replace PROC_ALL_PIDS with 1 (dummy value)
-          sed -i '' 's|PROC_ALL_PIDS|1|g' "$FILE"
-          # Replace PROC_PIDPATHINFO_MAXSIZE with 4096
-          sed -i '' 's|PROC_PIDPATHINFO_MAXSIZE|4096|g' "$FILE"
-          # Replace proc_listpids with stub returning 0
-          sed -i '' 's|proc_listpids|proc_listpids_stub|g' "$FILE"
-          # Replace proc_pidpath with stub
-          sed -i '' 's|proc_pidpath|proc_pidpath_stub|g' "$FILE"
-          # Add stubs at top after includes
-          sed -i '' '/^#include/a\
-          \
-          static int proc_listpids_stub(uint32_t type, uint32_t typeinfo, void* buffer, int buffersize) { return 0; }\
-          static int proc_pidpath_stub(int pid, void* buffer, uint32_t buffersize) { return 0; }' "$FILE"
-
       - name: Nuke all X11-dependent Java files
         working-directory: jdk21u
         run: |
@@ -118,7 +96,7 @@ jobs:
             touch /tmp/cups-fake/include/cups/ppd.h
           fi
 
-      - name: Configure OpenJDK
+      - name: Configure OpenJDK (disable JFR to avoid os_perf_bsd issues)
         working-directory: jdk21u
         run: |
           bash configure \
@@ -128,6 +106,7 @@ jobs:
             --disable-warnings-as-errors \
             --with-cups=/tmp/cups-fake \
             --with-freetype=bundled \
+            --with-jfr=no \
             --with-extra-cflags="-miphoneos-version-min=15.0" \
             --with-extra-cxxflags="-miphoneos-version-min=15.0" \
             --with-extra-ldflags="-miphoneos-version-min=15.0"
