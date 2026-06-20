@@ -76,16 +76,10 @@ jobs:
           cd /tmp
           curl -L -o cups.tar.gz https://github.com/apple/cups/releases/download/v2.2.4/cups-2.2.4-source.tar.gz
           tar xzf cups.tar.gz
-          ls -la
-          # Find what got extracted
           EXTRACTED_DIR=$(ls -d cups-* 2>/dev/null | head -1)
           echo "Extracted dir: $EXTRACTED_DIR"
-          ls -la $EXTRACTED_DIR/
-          # Create the fake cups structure
           mkdir -p /tmp/cups-fake/include/cups
-          # Copy all .h files from the extracted source
           find $EXTRACTED_DIR -name "*.h" -exec cp {} /tmp/cups-fake/include/cups/ \;
-          # If ppd.h still missing, create empty one
           if [ ! -f /tmp/cups-fake/include/cups/ppd.h ]; then
             touch /tmp/cups-fake/include/cups/ppd.h
           fi
@@ -106,13 +100,13 @@ jobs:
             --with-extra-cxxflags="-miphoneos-version-min=15.0" \
             --with-extra-ldflags="-miphoneos-version-min=15.0"
 
-      - name: Build JRE
+      - name: Build JDK
         working-directory: jdk21u
         run: |
-          make jre-image
+          make images
 
-      - name: Upload JRE artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jre-ios-21
-          path: jdk21u/build/*/images/jre
+          name: jdk-ios-21
+          path: jdk21u/build/*/images/jdk
