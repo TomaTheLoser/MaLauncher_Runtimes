@@ -51,6 +51,15 @@ jobs:
             rm -f "$REJ_FILE"
           fi
 
+      - name: Fix flags-cflags.m4 corrupted by patch
+        working-directory: jdk21u
+        run: |
+          FILE="make/autoconf/flags-cflags.m4"
+          if grep -q "JVM_BUILDJDK\" = true" "$FILE"; then
+            echo "=== Fixing corrupted flags-cflags.m4 ==="
+            sed -i '' 's/&& "\$JVM_BUILDJDK\" = true/&& test "\$JVM_BUILDJDK" = true/' "$FILE"
+          fi
+
       - name: Verify no remaining rejects
         working-directory: jdk21u
         run: |
@@ -63,7 +72,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          brew install autoconf
+          brew install autoconf cups
 
       - name: Configure OpenJDK
         working-directory: jdk21u
@@ -73,8 +82,6 @@ jobs:
             --with-sysroot=$(xcrun --sdk iphoneos --show-sdk-path) \
             --with-toolchain-type=clang \
             --disable-warnings-as-errors \
-            --with-cups=no \
-            --with-fontconfig=no \
             --with-freetype=bundled \
             --with-extra-cflags="-miphoneos-version-min=15.0" \
             --with-extra-cxxflags="-miphoneos-version-min=15.0" \
