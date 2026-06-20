@@ -57,6 +57,13 @@ jobs:
             sed -i '' 's/&& "\$JVM_BUILDJDK" = true/&& test "\$JVM_BUILDJDK" = true/' "$FILE"
           fi
 
+      - name: Fix themacsysroot variable in Gensrc.gmk
+        working-directory: jdk21u
+        run: |
+          FILE="make/modules/jdk.hotspot.agent/Gensrc.gmk"
+          # Replace ${themacsysroot} with the actual sysroot variable
+          sed -i '' 's/\${themacsysroot}/$(SYSROOT)/g' "$FILE"
+
       - name: Verify no remaining rejects
         working-directory: jdk21u
         run: |
@@ -77,14 +84,11 @@ jobs:
           curl -L -o cups.tar.gz https://github.com/apple/cups/releases/download/v2.2.4/cups-2.2.4-source.tar.gz
           tar xzf cups.tar.gz
           EXTRACTED_DIR=$(ls -d cups-* 2>/dev/null | head -1)
-          echo "Extracted dir: $EXTRACTED_DIR"
           mkdir -p /tmp/cups-fake/include/cups
           find $EXTRACTED_DIR -name "*.h" -exec cp {} /tmp/cups-fake/include/cups/ \;
           if [ ! -f /tmp/cups-fake/include/cups/ppd.h ]; then
             touch /tmp/cups-fake/include/cups/ppd.h
           fi
-          echo "=== Final cups structure ==="
-          find /tmp/cups-fake -type f
 
       - name: Configure OpenJDK
         working-directory: jdk21u
