@@ -72,28 +72,25 @@ jobs:
           brew install autoconf freetype
 
       - name: Download and setup CUPS headers
-        working-directory: jdk21u
         run: |
+          cd /tmp
           curl -L -o cups.tar.gz https://github.com/apple/cups/releases/download/v2.2.4/cups-2.2.4-source.tar.gz
           tar xzf cups.tar.gz
-          # Find the cups source directory
-          CUPS_SRC=$(find . -maxdepth 2 -name "cups.h" -type f | head -1 | xargs dirname)
-          echo "Found cups.h in: $CUPS_SRC"
-          # Create proper include structure
-          mkdir -p cups-fake/include/cups
-          cp $CUPS_SRC/*.h cups-fake/include/cups/ 2>/dev/null || true
-          # Also look for ppd.h
-          PPD_DIR=$(find . -maxdepth 3 -name "ppd.h" -type f | head -1 | xargs dirname)
-          if [ -n "$PPD_DIR" ]; then
-            mkdir -p cups-fake/include/cups
-            cp $PPD_DIR/ppd.h cups-fake/include/cups/
+          ls -la
+          # Find what got extracted
+          EXTRACTED_DIR=$(ls -d cups-* 2>/dev/null | head -1)
+          echo "Extracted dir: $EXTRACTED_DIR"
+          ls -la $EXTRACTED_DIR/
+          # Create the fake cups structure
+          mkdir -p /tmp/cups-fake/include/cups
+          # Copy all .h files from the extracted source
+          find $EXTRACTED_DIR -name "*.h" -exec cp {} /tmp/cups-fake/include/cups/ \;
+          # If ppd.h still missing, create empty one
+          if [ ! -f /tmp/cups-fake/include/cups/ppd.h ]; then
+            touch /tmp/cups-fake/include/cups/ppd.h
           fi
-          # Create a fake ppd.h if missing
-          if [ ! -f cups-fake/include/cups/ppd.h ]; then
-            touch cups-fake/include/cups/ppd.h
-          fi
-          echo "CUPS fake dir contents:"
-          find cups-fake -type f
+          echo "=== Final cups structure ==="
+          find /tmp/cups-fake -type f
 
       - name: Configure OpenJDK
         working-directory: jdk21u
@@ -103,7 +100,7 @@ jobs:
             --with-sysroot=$(xcrun --sdk iphoneos --show-sdk-path) \
             --with-toolchain-type=clang \
             --disable-warnings-as-errors \
-            --with-cups=$(pwd)/cups-fake \
+            --with-cups=/tmp/cups-fake \
             --with-freetype=bundled \
             --with-extra-cflags="-miphoneos-version-min=15.0" \
             --with-extra-cxxflags="-miphoneos-version-min=15.0" \
