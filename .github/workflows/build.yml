@@ -61,8 +61,28 @@ jobs:
         working-directory: jdk21u
         run: |
           FILE="make/modules/jdk.hotspot.agent/Gensrc.gmk"
-          # Just disable the entire gen by commenting it all out
           sed -i '' 's/^/#DISABLED_/' "$FILE"
+
+      - name: Fix missing libproc.h on iOS
+        working-directory: jdk21u
+        run: |
+          FILE="src/hotspot/os/bsd/os_perf_bsd.cpp"
+          sed -i '' 's/#import <libproc.h>/\/\/ iOS does not have libproc.h/' "$FILE"
+
+      - name: Fix X11 desktop classes for iOS
+        working-directory: jdk21u
+        run: |
+          FILE="src/java.desktop/unix/classes/sun/awt/X11FontManager.java"
+          if [ -f "$FILE" ]; then
+            # Add placeholder methods so compilation doesn't fail
+            sed -i '' '/public class X11FontManager/a\
+              private static class NativeFont { static boolean fontExists(String s) { return false; } }' "$FILE"
+          fi
+          FILE2="src/java.desktop/unix/classes/sun/font/NativeGlyphMapper.java"
+          if [ -f "$FILE2" ]; then
+            sed -i '' '/public class NativeGlyphMapper/a\
+              private static class NativeFont { String encoding = null; }' "$FILE2"
+          fi
 
       - name: Verify no remaining rejects
         working-directory: jdk21u
