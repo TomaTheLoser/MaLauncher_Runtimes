@@ -33,12 +33,7 @@ jobs:
           TARGET_FILE="make/modules/java.desktop/lib/Awt2dLibraries.gmk"
           if [ -f "$REJ_FILE" ]; then
             echo "=== Fixing Awt2dLibraries.gmk rejects ==="
-            # Hunk 12: change macosx to macosx_NOTIOS around SHADERS_SRC line
             sed -i '' 's/ifeq (\$(call isTargetOs, macosx), true)/ifeq (\$(call isTargetOs, macosx_NOTIOS), true)/' "$TARGET_FILE"
-            # Make sure it only hits the right one by checking surrounding context
-            if grep -q "SHADERS_SRC.*shaders.metal" "$TARGET_FILE"; then
-              echo "Awt2dLibraries.gmk: Already fixed or patch applied correctly"
-            fi
             rm -f "$REJ_FILE"
           fi
 
@@ -49,7 +44,6 @@ jobs:
           TARGET_FILE="src/hotspot/os/posix/signals_posix.cpp"
           if [ -f "$REJ_FILE" ]; then
             echo "=== Fixing signals_posix.cpp rejects ==="
-            # Add missing includes after #include <signal.h>
             sed -i '' '/^#include <signal.h>/a\
           #include "os_bsd.hpp"\
           #include <sys/mman.h>
@@ -66,6 +60,10 @@ jobs:
           else
             echo "All rejects resolved!"
           fi
+
+      - name: Install build dependencies
+        run: |
+          brew install autoconf
 
       - name: Configure OpenJDK
         working-directory: jdk21u
