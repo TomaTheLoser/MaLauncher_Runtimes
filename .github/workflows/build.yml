@@ -57,12 +57,12 @@ jobs:
             sed -i '' 's/&& "\$JVM_BUILDJDK" = true/&& test "\$JVM_BUILDJDK" = true/' "$FILE"
           fi
 
-      - name: Fix themacsysroot variable in Gensrc.gmk
+      - name: Disable hotspot agent (breaks on iOS)
         working-directory: jdk21u
         run: |
           FILE="make/modules/jdk.hotspot.agent/Gensrc.gmk"
-          # Replace ${themacsysroot} with the actual sysroot variable
-          sed -i '' 's/\${themacsysroot}/$(SYSROOT)/g' "$FILE"
+          # Just disable the entire gen by commenting it all out
+          sed -i '' 's/^/#DISABLED_/' "$FILE"
 
       - name: Verify no remaining rejects
         working-directory: jdk21u
