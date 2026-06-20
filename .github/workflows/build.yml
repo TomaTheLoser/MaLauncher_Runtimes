@@ -76,10 +76,16 @@ jobs:
         run: |
           curl -L -o cups.tar.gz https://github.com/apple/cups/releases/download/v2.2.4/cups-2.2.4-source.tar.gz
           tar xzf cups.tar.gz
-          mkdir -p cups-headers
-          cp -r cups-2.2.4-source/cups cups-headers/
-          cp -r cups-2.2.4-source/filter cups-headers/ 2>/dev/null || true
-          cp -r cups-2.2.4-source/config.h cups-headers/ 2>/dev/null || true
+          echo "=== Listing extracted contents ==="
+          ls -la
+          echo "=== Finding cups.h ==="
+          find . -name "cups.h" -type f
+          echo "=== Finding ppd.h ==="
+          find . -name "ppd.h" -type f
+          # Get the directory containing cups.h
+          CUPS_DIR=$(dirname $(find . -name "cups.h" -type f | head -1))
+          echo "CUPS_DIR=$CUPS_DIR"
+          echo "CUPS_DIR=$CUPS_DIR" >> $GITHUB_ENV
 
       - name: Configure OpenJDK
         working-directory: jdk21u
@@ -91,8 +97,8 @@ jobs:
             --disable-warnings-as-errors \
             --with-cups=system \
             --with-freetype=bundled \
-            --with-extra-cflags="-miphoneos-version-min=15.0 -I$(pwd)/cups-headers" \
-            --with-extra-cxxflags="-miphoneos-version-min=15.0 -I$(pwd)/cups-headers" \
+            --with-extra-cflags="-miphoneos-version-min=15.0 -I$(pwd)/$CUPS_DIR" \
+            --with-extra-cxxflags="-miphoneos-version-min=15.0 -I$(pwd)/$CUPS_DIR" \
             --with-extra-ldflags="-miphoneos-version-min=15.0"
 
       - name: Build JRE
