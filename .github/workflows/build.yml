@@ -73,6 +73,9 @@ jobs:
             --with-sysroot=$(xcrun --sdk iphoneos --show-sdk-path) \
             --with-toolchain-type=clang \
             --disable-warnings-as-errors \
+            --with-cups=no \
+            --with-fontconfig=no \
+            --with-freetype=bundled \
             --with-extra-cflags="-miphoneos-version-min=15.0" \
             --with-extra-cxxflags="-miphoneos-version-min=15.0" \
             --with-extra-ldflags="-miphoneos-version-min=15.0"
