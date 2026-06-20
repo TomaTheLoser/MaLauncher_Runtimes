@@ -63,39 +63,34 @@ jobs:
           FILE="make/modules/jdk.hotspot.agent/Gensrc.gmk"
           sed -i '' 's/^/#DISABLED_/' "$FILE"
 
-      - name: Stub out os_perf_bsd.cpp correctly
+      - name: Fix os_perf_bsd.cpp for iOS (remove missing includes)
         working-directory: jdk21u
         run: |
-          cat > src/hotspot/os/bsd/os_perf_bsd.cpp << 'EOF'
-          #include "precompiled.hpp"
-          #include "runtime/os.hpp"
-          #include "runtime/os_perf.hpp"
-          #include "utilities/globalDefinitions.hpp"
+          FILE="src/hotspot/os/bsd/os_perf_bsd.cpp"
+          # Remove include of libproc.h (not on iOS)
+          sed -i '' 's|#import <libproc.h>|// iOS: no libproc.h|' "$FILE"
+          # Remove include of net/route.h (not on iOS)
+          sed -i '' 's|#include <net/route.h>|// iOS: no route.h|' "$FILE"
+          # Replace PROC_ALL_PIDS with 1 (dummy value)
+          sed -i '' 's|PROC_ALL_PIDS|1|g' "$FILE"
+          # Replace PROC_PIDPATHINFO_MAXSIZE with 4096
+          sed -i '' 's|PROC_PIDPATHINFO_MAXSIZE|4096|g' "$FILE"
+          # Replace proc_listpids with stub returning 0
+          sed -i '' 's|proc_listpids|proc_listpids_stub|g' "$FILE"
+          # Replace proc_pidpath with stub
+          sed -i '' 's|proc_pidpath|proc_pidpath_stub|g' "$FILE"
+          # Add stubs at top after includes
+          sed -i '' '/^#include/a\
+          \
+          static int proc_listpids_stub(uint32_t type, uint32_t typeinfo, void* buffer, int buffersize) { return 0; }\
+          static int proc_pidpath_stub(int pid, void* buffer, uint32_t buffersize) { return 0; }' "$FILE"
 
-          jdouble os::elapsedVTime() {
-            return (jdouble)-1;
-          }
-
-          jlong os::elapsed_counter() {
-            return (jlong)-1;
-          }
-
-          physical_memory_size_type os::physical_memory() {
-            return (physical_memory_size_type)-1;
-          }
-
-          bool os::get_host_name(char* buf, size_t buflen) {
-            if (buflen > 0) buf[0] = '\0';
-            return false;
-          }
-          EOF
-
-      - name: Exclude broken X11 Java files
+      - name: Nuke all X11-dependent Java files
         working-directory: jdk21u
         run: |
-          # Directly remove the problematic files so they can't be compiled
           rm -f src/java.desktop/unix/classes/sun/awt/X11FontManager.java
           rm -f src/java.desktop/unix/classes/sun/font/NativeGlyphMapper.java
+          rm -f src/java.desktop/unix/classes/sun/font/MFontConfiguration.java
 
       - name: Verify no remaining rejects
         working-directory: jdk21u
