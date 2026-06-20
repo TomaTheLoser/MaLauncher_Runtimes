@@ -63,46 +63,40 @@ jobs:
           FILE="make/modules/jdk.hotspot.agent/Gensrc.gmk"
           sed -i '' 's/^/#DISABLED_/' "$FILE"
 
-      - name: Stub out os_perf_bsd.cpp for iOS
+      - name: Stub out os_perf_bsd.cpp correctly
         working-directory: jdk21u
         run: |
           cat > src/hotspot/os/bsd/os_perf_bsd.cpp << 'EOF'
           #include "precompiled.hpp"
+          #include "runtime/os.hpp"
           #include "runtime/os_perf.hpp"
-          #include <stdlib.h>
-          #include <stdio.h>
-          
-          jdouble os::elapsedVTime() { return (jdouble)-1; }
-          jlong os::elapsedCounter() { return (jlong)-1; }
-          
-          int os::get_cpu_count() { return 1; }
-          int os::get_cpu_online_count() { return 1; }
-          int os::get_processor_count() { return 1; }
-          
-          jlong os::physical_memory() { return (jlong)-1; }
-          jlong os::available_memory() { return (jlong)-1; }
-          jlong os::total_memory() { return (jlong)-1; }
-          
-          bool os::get_host_name(char* buf, size_t buflen) { return false; }
-          bool os::get_domain_name(char* buf, size_t buflen) { return false; }
-          
-          CPUInformation::CPUInformation() {}
-          bool os::get_cpu_information(CPUInformation& cpuinfo) { return false; }
+
+          jdouble os::elapsedVTime() {
+            return (jdouble)-1;
+          }
+
+          jlong os::elapsed_counter() {
+            return (jlong)-1;
+          }
+
+          os::physical_memory_size_type os::physical_memory() {
+            return (os::physical_memory_size_type)-1;
+          }
+
+          bool os::get_host_name(char* buf, size_t buflen) {
+            if (buflen > 0) buf[0] = '\0';
+            return false;
+          }
           EOF
 
-      - name: Fix X11 desktop classes for iOS
+      - name: Exclude broken X11 Java files
         working-directory: jdk21u
         run: |
-          FILE="src/java.desktop/unix/classes/sun/awt/X11FontManager.java"
-          if [ -f "$FILE" ]; then
-            sed -i '' '/public class X11FontManager/a\
-              private static class NativeFont { static boolean fontExists(String s) { return false; } }' "$FILE"
-          fi
-          FILE2="src/java.desktop/unix/classes/sun/font/NativeGlyphMapper.java"
-          if [ -f "$FILE2" ]; then
-            sed -i '' '/public class NativeGlyphMapper/a\
-              private static class NativeFont { String encoding = null; }' "$FILE2"
-          fi
+          JAVA_GMK="make/modules/java.desktop/Java.gmk"
+          # Exclude X11FontManager.java and NativeGlyphMapper.java from build
+          sed -i '' '/EXCLUDE_FILES += \\/a\
+              $(TOPDIR)/src/java.desktop/unix/classes/sun/awt/X11FontManager.java \\\
+              $(TOPDIR)/src/java.desktop/unix/classes/sun/font/NativeGlyphMapper.java \\' "$JAVA_GMK"
 
       - name: Verify no remaining rejects
         working-directory: jdk21u
