@@ -96,7 +96,7 @@ jobs:
             touch /tmp/cups-fake/include/cups/ppd.h
           fi
 
-      - name: Configure OpenJDK (disable JFR to avoid os_perf_bsd issues)
+      - name: Configure OpenJDK
         working-directory: jdk21u
         run: |
           bash configure \
@@ -106,10 +106,18 @@ jobs:
             --disable-warnings-as-errors \
             --with-cups=/tmp/cups-fake \
             --with-freetype=bundled \
-            --with-jfr=no \
             --with-extra-cflags="-miphoneos-version-min=15.0" \
             --with-extra-cxxflags="-miphoneos-version-min=15.0" \
             --with-extra-ldflags="-miphoneos-version-min=15.0"
+
+      - name: Disable JFR in spec.gmk
+        working-directory: jdk21u
+        run: |
+          SPEC_FILE="build/macosx-aarch64-server-release/spec.gmk"
+          if [ -f "$SPEC_FILE" ]; then
+            sed -i '' 's/INCLUDE_JFR := true/INCLUDE_JFR := false/' "$SPEC_FILE"
+            echo "JFR disabled in spec.gmk"
+          fi
 
       - name: Build JDK
         working-directory: jdk21u
