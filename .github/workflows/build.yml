@@ -55,9 +55,9 @@ jobs:
         working-directory: jdk21u
         run: |
           FILE="make/autoconf/flags-cflags.m4"
-          if grep -q "JVM_BUILDJDK\" = true" "$FILE"; then
+          if grep -q 'JVM_BUILDJDK" = true' "$FILE"; then
             echo "=== Fixing corrupted flags-cflags.m4 ==="
-            sed -i '' 's/&& "\$JVM_BUILDJDK\" = true/&& test "\$JVM_BUILDJDK" = true/' "$FILE"
+            sed -i '' 's/&& "\$JVM_BUILDJDK" = true/&& test "\$JVM_BUILDJDK" = true/' "$FILE"
           fi
 
       - name: Verify no remaining rejects
@@ -72,7 +72,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          brew install autoconf cups
+          brew install autoconf cups freetype
 
       - name: Configure OpenJDK
         working-directory: jdk21u
@@ -82,10 +82,11 @@ jobs:
             --with-sysroot=$(xcrun --sdk iphoneos --show-sdk-path) \
             --with-toolchain-type=clang \
             --disable-warnings-as-errors \
+            --with-cups=/opt/homebrew \
             --with-freetype=bundled \
-            --with-extra-cflags="-miphoneos-version-min=15.0" \
-            --with-extra-cxxflags="-miphoneos-version-min=15.0" \
-            --with-extra-ldflags="-miphoneos-version-min=15.0"
+            --with-extra-cflags="-miphoneos-version-min=15.0 -I/opt/homebrew/include" \
+            --with-extra-cxxflags="-miphoneos-version-min=15.0 -I/opt/homebrew/include" \
+            --with-extra-ldflags="-miphoneos-version-min=15.0 -L/opt/homebrew/lib"
 
       - name: Build JRE
         working-directory: jdk21u
