@@ -32,7 +32,6 @@ jobs:
           REJ_FILE="make/modules/java.desktop/lib/Awt2dLibraries.gmk.rej"
           TARGET_FILE="make/modules/java.desktop/lib/Awt2dLibraries.gmk"
           if [ -f "$REJ_FILE" ]; then
-            echo "=== Fixing Awt2dLibraries.gmk rejects ==="
             sed -i '' 's/ifeq (\$(call isTargetOs, macosx), true)/ifeq (\$(call isTargetOs, macosx_NOTIOS), true)/' "$TARGET_FILE"
             rm -f "$REJ_FILE"
           fi
@@ -43,7 +42,6 @@ jobs:
           REJ_FILE="src/hotspot/os/posix/signals_posix.cpp.rej"
           TARGET_FILE="src/hotspot/os/posix/signals_posix.cpp"
           if [ -f "$REJ_FILE" ]; then
-            echo "=== Fixing signals_posix.cpp rejects ==="
             sed -i '' '/^#include <signal.h>/a\
           #include "os_bsd.hpp"\
           #include <sys/mman.h>
@@ -56,7 +54,6 @@ jobs:
         run: |
           FILE="make/autoconf/flags-cflags.m4"
           if grep -q 'JVM_BUILDJDK" = true' "$FILE"; then
-            echo "=== Fixing corrupted flags-cflags.m4 ==="
             sed -i '' 's/&& "\$JVM_BUILDJDK" = true/&& test "\$JVM_BUILDJDK" = true/' "$FILE"
           fi
 
@@ -72,7 +69,17 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          brew install autoconf cups freetype
+          brew install autoconf freetype
+
+      - name: Download and extract CUPS headers
+        working-directory: jdk21u
+        run: |
+          curl -L -o cups.tar.gz https://github.com/apple/cups/releases/download/v2.2.4/cups-2.2.4-source.tar.gz
+          tar xzf cups.tar.gz
+          mkdir -p cups-headers
+          cp -r cups-2.2.4-source/cups cups-headers/
+          cp -r cups-2.2.4-source/filter cups-headers/ 2>/dev/null || true
+          cp -r cups-2.2.4-source/config.h cups-headers/ 2>/dev/null || true
 
       - name: Configure OpenJDK
         working-directory: jdk21u
@@ -82,11 +89,11 @@ jobs:
             --with-sysroot=$(xcrun --sdk iphoneos --show-sdk-path) \
             --with-toolchain-type=clang \
             --disable-warnings-as-errors \
-            --with-cups=/opt/homebrew \
+            --with-cups=system \
             --with-freetype=bundled \
-            --with-extra-cflags="-miphoneos-version-min=15.0 -I/opt/homebrew/include" \
-            --with-extra-cxxflags="-miphoneos-version-min=15.0 -I/opt/homebrew/include" \
-            --with-extra-ldflags="-miphoneos-version-min=15.0 -L/opt/homebrew/lib"
+            --with-extra-cflags="-miphoneos-version-min=15.0 -I$(pwd)/cups-headers" \
+            --with-extra-cxxflags="-miphoneos-version-min=15.0 -I$(pwd)/cups-headers" \
+            --with-extra-ldflags="-miphoneos-version-min=15.0"
 
       - name: Build JRE
         working-directory: jdk21u
