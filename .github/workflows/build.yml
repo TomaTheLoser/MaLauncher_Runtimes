@@ -1,1 +1,35 @@
+name: Build iOS JRE 21
 
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout JDK 21
+        uses: actions/checkout@v4
+        with:
+          repository: openjdk/jdk21u
+          path: jdk21u
+      
+      - name: Install dependencies
+        run: |
+          brew install autoconf make wget
+
+      - name: Download iOS JDK build scripts from PojavLauncher
+        run: |
+          wget https://raw.githubusercontent.com/PojavLauncher/PojavLauncher_iOS/master/scripts/build_jdk.sh
+          chmod +x build_jdk.sh
+
+      - name: Build JRE
+        run: |
+          ./build_jdk.sh
+        working-directory: jdk21u
+
+      - name: Upload JRE
+        uses: actions/upload-artifact@v4
+        with:
+          name: jre-ios-21
+          path: jdk21u/build/*/images/jre
