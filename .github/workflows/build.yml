@@ -13,22 +13,78 @@ jobs:
         with:
           repository: openjdk/jdk21u
           path: jdk21u
-      
-      - name: Install dependencies
-        run: |
-          brew install autoconf make wget
 
-      - name: Download iOS JDK build scripts from PojavLauncher
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          repository: TomaTheLoser/Jdk_ios
+          path: jdk_ios
+          ref: fix/master_pacthes_jre21
+
+      - name: Apply patches with fuzz
+        working-directory: jdk21u
         run: |
-          wget https://raw.githubusercontent.com/PojavLauncher/PojavLauncher_iOS/master/scripts/build_jdk.sh
-          chmod +x build_jdk.sh
+          git apply --reject --verbose ../jdk_ios/patches/jre_21/ios/jdk21u_ios.diff || true
+          
+      - name: Fix Awt2dLibraries.gmk rejects
+        working-directory: jdk21u
+        run: |
+          REJ_FILE="make/modules/java.desktop/lib/Awt2dLibraries.gmk.rej"
+          TARGET_FILE="make/modules/java.desktop/lib/Awt2dLibraries.gmk"
+          if [ -f "$REJ_FILE" ]; then
+            echo "=== Fixing Awt2dLibraries.gmk rejects ==="
+            # Hunk 12: change macosx to macosx_NOTIOS around SHADERS_SRC line
+            sed -i '' 's/ifeq (\$(call isTargetOs, macosx), true)/ifeq (\$(call isTargetOs, macosx_NOTIOS), true)/' "$TARGET_FILE"
+            # Make sure it only hits the right one by checking surrounding context
+            if grep -q "SHADERS_SRC.*shaders.metal" "$TARGET_FILE"; then
+              echo "Awt2dLibraries.gmk: Already fixed or patch applied correctly"
+            fi
+            rm -f "$REJ_FILE"
+          fi
+
+      - name: Fix signals_posix.cpp rejects
+        working-directory: jdk21u
+        run: |
+          REJ_FILE="src/hotspot/os/posix/signals_posix.cpp.rej"
+          TARGET_FILE="src/hotspot/os/posix/signals_posix.cpp"
+          if [ -f "$REJ_FILE" ]; then
+            echo "=== Fixing signals_posix.cpp rejects ==="
+            # Add missing includes after #include <signal.h>
+            sed -i '' '/^#include <signal.h>/a\
+          #include "os_bsd.hpp"\
+          #include <sys/mman.h>
+          ' "$TARGET_FILE"
+            rm -f "$REJ_FILE"
+          fi
+
+      - name: Verify no remaining rejects
+        working-directory: jdk21u
+        run: |
+          if find . -name "*.rej" | grep -q .; then
+            echo "WARNING: Some rejects remain:"
+            find . -name "*.rej"
+          else
+            echo "All rejects resolved!"
+          fi
+
+      - name: Configure OpenJDK
+        working-directory: jdk21u
+        run: |
+          bash configure \
+            --openjdk-target=aarch64-apple-ios \
+            --with-sysroot=$(xcrun --sdk iphoneos --show-sdk-path) \
+            --with-toolchain-type=clang \
+            --disable-warnings-as-errors \
+            --with-extra-cflags="-miphoneos-version-min=15.0" \
+            --with-extra-cxxflags="-miphoneos-version-min=15.0" \
+            --with-extra-ldflags="-miphoneos-version-min=15.0"
 
       - name: Build JRE
-        run: |
-          ./build_jdk.sh
         working-directory: jdk21u
+        run: |
+          make jre-image
 
-      - name: Upload JRE
+      - name: Upload JRE artifact
         uses: actions/upload-artifact@v4
         with:
           name: jre-ios-21
